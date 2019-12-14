@@ -1,0 +1,92 @@
+name = Material base
+core = 7.x
+description = Base theme inspirited by Material Design concept.
+
+stylesheets[all][]   = css/flexboxgrid.css
+;stylesheets[all][]   = css/animation.css
+stylesheets[all][]   = css/color-themes.css
+stylesheets[all][]   = css/theme-dark.css
+stylesheets[all][]   = css/icons.css
+stylesheets[all][]   = css/services-icons.css
+stylesheets[all][]   = css/filetypes-icons.css
+stylesheets[all][]   = css/helpers.css
+stylesheets[all][]   = css/code-highlight.css
+stylesheets[all][]   = css/styles.css
+stylesheets[all][]   = css/fonts.css
+
+scripts[] = js/misc.js
+scripts[] = js/jquery.ripple.js
+scripts[] = js/jquery.mobile-events.min.js
+;scripts[] = js/animation.js
+scripts[] = js/prism.js
+
+regions[help] = Help
+regions[page_top] = Page top
+regions[page_bottom] = Page bottom
+regions[highlighted] = Highlighted
+
+regions[header] = Header
+regions[content] = Content
+regions[sidebar_first] = Sidebar first
+regions[sidebar_second] = Sidebar second
+regions[footer] = Footer
+
+regions[navbar] = Navbar
+regions[drawer] = Drawer
+regions[header_bg] = Header background
+regions[actions] = Actions
+regions[before_main] = Before main content
+regions[after_main] = After main content
+regions[content_secondary] = Content secondary
+regions[footer_content] = Footer content
+
+breakpoints[min_xs]   = 'all'
+breakpoints[ss]       = 'all and (min-width: 360px)'
+breakpoints[ms]       = 'all and (min-width: 480px)'
+breakpoints[xs]       = 'all and (min-width: 568px)'
+breakpoints[max_sm]   = 'all and (max-width: 767px)'
+breakpoints[sm]       = 'all and (min-width: 768px)'
+breakpoints[only_sm]  = 'all and (min-width: 768px) and (max-width: 991px)'
+breakpoints[max_md]   = 'all and (max-width: 991px)'
+breakpoints[md]       = 'all and (min-width: 992px)'
+breakpoints[only_smx] = 'all and (min-width: 768px) and (max-width: 1255px)'
+breakpoints[max_lg]   = 'all and (max-width: 1255px)'
+breakpoints[lg]       = 'all and (min-width: 1256px)'
+breakpoints[xl]       = 'all and (min-width: 1520px)'
+breakpoints[ll]       = 'all and (min-width: 1920px)'
+
+multipliers[min_xs][] = 1.5x
+multipliers[min_xs][] = 2x
+multipliers[min_xs][] = 2.5x
+multipliers[min_xs][] = 3x
+multipliers[ss][]     = 1.5x
+multipliers[ss][]     = 2x
+multipliers[ss][]     = 2.5x
+multipliers[ss][]     = 3x
+multipliers[ms][]     = 1.5x
+multipliers[ms][]     = 2x
+multipliers[ms][]     = 2.5x
+multipliers[ms][]     = 3x
+multipliers[xs][]     = 1.5x
+multipliers[xs][]     = 2x
+multipliers[xs][]     = 2.5x
+multipliers[xs][]     = 3x
+multipliers[max_sm][] = 1.5x
+multipliers[max_sm][] = 2x
+multipliers[max_sm][] = 2.5x
+multipliers[max_sm][] = 3x
+multipliers[sm][]     = 2x
+multipliers[only_sm][] = 2x
+multipliers[max_md][] = 2x
+multipliers[md][]     = 2x
+multipliers[only_smx][] = 2x
+multipliers[max_lg][] = 2x
+multipliers[lg][]     = 2x
+multipliers[xl][]     = 2x
+multipliers[ll][]     = 2x
+
+; Information added by Drupal.org packaging script on 2019-06-12
+version = "7.x-1.7"
+core = "7.x"
+project = "material_base"
+datestamp = "1560380588"

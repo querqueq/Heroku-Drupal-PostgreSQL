@@ -1,0 +1,56 @@
+@charset "UTF-8";
+
+@import "color-palette";
+@import "variables";
+
+.material-icons {
+  font-family: 'Material Icons', 'Material Icons Local';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}
+
+.material-icons.fs-18 { font-size: 18px; }
+.material-icons.fs-24 { font-size: 24px; }
+.material-icons.fs-36 { font-size: 36px; }
+.material-icons.fs-48 { font-size: 48px; }
+
+.icon-dark.icon-left:before, .icon-dark.icon-right:after { color: $color-text !important; }
+.icon-secondary.icon-left:before, .icon-secondary.icon-right:after { color: $color-text-secondary; }
+.icon-disabled.icon-left:before, .icon-disabled.icon-right:after { color: $color-text-disabled; }
+.icon-light.icon-left:before, .icon-light.icon-right:after { color: $color-text-light !important; }
+.icon-light.icon-disabled.icon-left:before, .icon-light.icon-disabled.icon-right:after { color: $color-text-light-disabled !important; }
+.icon-primary.icon-left:before, .icon-primary.icon-right:after { color: $color-primary; }
+.icon-accent.icon-left:before, .icon-accent.icon-right:after { color: $color-accent; }
+
+.icon-left:before {
+  @extend .material-icons;
+  content: attr(data-icon);
+  margin-right: 12px;
+  float: left;
+}
+
+.icon-right:after {
+  @extend .material-icons;
+  content: attr(data-icon);
+  margin-left: 12px;
+  float: right;
+}
+
+.theme-dark {
+  .icon-secondary.icon-left:before, .icon-secondary.icon-right:after { color: $color-text-light-secondary; }
+  .icon-disabled.icon-left:before, .icon-disabled.icon-right:after { color: $color-text-light-disabled; }
+  .icon-primary.icon-left:before, .icon-primary.icon-right:after { color: $color-primary-light; }
+  .icon-accent.icon-left:before, .icon-accent.icon-right:after { color: $color-accent-light; }
+}

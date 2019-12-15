@@ -1,0 +1,12 @@
+name = Role Field
+description = Provides a field to select from roles enabled on the site.
+package = Fields
+version = 1.x
+core = 7.x
+
+dependencies[] = options
+; Information added by Drupal.org packaging script on 2018-11-04
+version = "7.x-1.0-alpha3"
+core = "7.x"
+project = "role_field"
+datestamp = "1541374983"

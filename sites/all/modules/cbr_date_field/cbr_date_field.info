@@ -1,0 +1,7 @@
+name = CBR Datefield (Unix timestamp) 
+description = Provides case based reasoning for the date field (Unix timestamp)
+core = 7.x
+version = 1.0
+package = Case Based Reasoning
+dependencies[] = cbr_core
+dependencies[] = date

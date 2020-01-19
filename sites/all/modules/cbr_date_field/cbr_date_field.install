@@ -1,0 +1,13 @@
+<?php
+
+/** Implements hook_enable()
+ */
+function cbr_date_field_enable() {
+    cbr_core_register_field('datestamp');
+}
+
+/** Implements hook_disable()
+ */
+function cbr_date_field_disable() {
+    cbr_core_unregister_field('datestamp');
+}

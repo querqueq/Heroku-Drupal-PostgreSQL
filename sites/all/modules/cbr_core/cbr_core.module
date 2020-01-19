@@ -1,0 +1,471 @@
+<?php
+
+module_load_include('inc', 'cbr_core', 'cbr_core_calculate');
+module_load_include('inc', 'cbr_core', 'cbr_core_fields');
+
+/**
+ * Implements hook_menu(). 
+ */
+function cbr_core_menu() {
+	$items = array();
+/*	$items['<front>'] = array(
+		'menu_name' => 'main-menu',
+		'title' => 'Home',
+		'weight' => 0,
+	);*/
+	$items['cbr'] = array(
+    	'menu_name' => 'main-menu',
+    	'title' => 'Case-based Reasoning',
+    	'weight' => 1,
+	);
+	$items['cbr/case/recalculate'] = array(
+    	'title' => 'Recalculate Similarity',
+		'menu_name' => 'main-menu',
+		'page callback' => 'drupal_get_form',
+    	'page arguments' => array('calculation_form', 'case'),
+    	'access arguments' => array('access content'),
+    	'type' => MENU_LOCAL_TASK,
+    	'weight' => 2,
+    	'file' => 'cbr_core.admin.inc',
+  	);
+   $items['cbr/case/weight_settings'] = array(
+    	'title' => 'Field Weights',
+		'menu_name' => 'main-menu',
+    	'page callback' => 'drupal_get_form',
+    	'page arguments' => array('cbr_core_weight_form', 'case'),
+    	'access arguments' => array('access content'),
+    	'type' => MENU_LOCAL_TASK,
+    	'weight' => 3,
+     	'file' => 'cbr_core.admin.inc',
+ 	);
+    $items['admin/config/cbr'] = array(
+        'position' => 'left',
+        'title' => 'Case Based Reasoning',
+        'description' => 'Manage and recalculate your fields with case based reasoning.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cbr_core_admin_settings'),
+        'access arguments' => array('administer content types'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cbr_core.admin.inc',
+        'weight' => -99,
+    );
+    $items['admin/config/cbr/settings'] = array(
+        'title' => 'Settings',
+        'description' => 'Manage and recalculate your fields with case based reasoning.',
+        'page callback' => 'cbr_core_admin_goto_settings',
+        'access arguments' => array('administer content types'),
+        'type' => MENU_NORMAL_ITEM,
+        'file' => 'cbr_core.admin.inc',
+    );
+
+    $items['admin/config/cbr/settings_'] = array(
+        'title' => 'Settings',
+        'description' => 'Manage and recalculate your fields with case based reasoning.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cbr_core_admin_settings'),
+        'access arguments' => array('administer content types'),
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'file' => 'cbr_core.admin.inc',
+        'weight' => 0,
+    );
+
+    $items['admin/config/cbr/start'] = array(
+        'title' => 'Get Started',
+        'description' => 'Getting started guide for the cbr_core module.',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('cbr_core_admin_get_started'),
+        'access arguments' => array('administer content types'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'cbr_core.admin.inc',
+        'weight' => 1,
+    );
+    $items['admin/config/cbr/doc'] = array(
+        'title' => 'Documentation & API Reference',
+        'description' => 'Gettings started guide for the cbr_core module.',
+        'page callback' => 'cbr_core_admin_documentation',
+        'access arguments' => array('administer content types'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'cbr_core.admin.inc',
+        'weight' => 2,
+    );
+    return $items;
+}
+/**
+ * @param string $type
+ * @return string
+ */
+function _custom_work_get_node_form($type = 'case') {
+  global $user;
+  module_load_include('inc', 'node', 'node.pages');
+  $node = (object) array(
+    'uid' => $user->uid,
+    'name' => (isset($user->name) ? $user->name : ''),
+    'type' => $type,
+    'language' => LANGUAGE_NONE
+  );
+  $form = drupal_get_form($type . '_node_form', $node);
+  return $form;
+}
+function calculation_form($form, &$form_state) {
+	$form = array();
+    $form['select_recalc'] = array(
+        '#type' => 'select',
+        '#options' => cbr_core_get_active_node_types(),
+        '#title' => t('Select Node Type'),
+        '#description' => t('Sometimes you need to recalculate the similarities of a content type. To do so, please select a content type and click "Recalculate". Only content types with one or more "Registered CBR fields" are selectable.'),
+        '#default_value' => '-',
+    );
+  	$form['node_title'] = array(
+    '#title' => t('<b>or</b><br><br>Select title of node for which you want to recalculate similarity'),
+    '#type' => 'textfield',
+    '#maxlength' => 120,
+    '#autocomplete_path' => 'autocomplete-case_engine',
+  );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Recalculate'),
+    );
+    $form['#submit'][] = 'cbr_core_admin_calculation_submit';
+	return $form;
+}
+function term_form($form, &$form_state) {
+  $form = array();
+ 
+  $form['terms'] = array(
+    '#title' => t('Terms'),
+    '#type' => 'textfield',
+    '#maxlength' => 60,
+    '#autocomplete_path' => 'demo-autocomplete-engine',
+  );
+ 
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+  );
+ 
+  return $form;
+}
+function autocomplete_case($text) {
+  $results = array();
+ 
+  $query = db_select('node', 'n');
+  $query
+      ->condition('n.title', '%' . db_like($text) . '%', 'LIKE')
+      ->fields('n', array('title'))
+      ->orderBy('title', 'ASC');
+  $cases = $query->execute();
+ 
+  foreach ($cases as $row) {
+    $results[$row->title] = check_plain($row->title);
+  }
+ 
+  drupal_json_output($results);
+}
+function demo_autocomplete($text) {
+  $results = array();
+ 
+  $query = db_select('taxonomy_term_data', 't');
+  $query
+      ->condition('t.name', '%' . db_like($text) . '%', 'LIKE')
+      ->fields('t', array('name'))
+      ->orderBy('name', 'ASC');
+  $terms = $query->execute();
+ 
+  foreach ($terms as $row) {
+    $results[$row->name] = check_plain($row->name);
+  }
+ 
+  drupal_json_output($results);
+}
+/**
+ * Implements hook_form_alter()
+ */
+
+function cbr_core_form_alter(&$form, &$form_state, $form_id) {    
+  if ($form_id == 'case') {
+    $form['actions']['submit']['#submit'][] = '_cbr_core_node_submit';
+  }     
+}
+
+function _cbr_core_node_submit($form, &$form_state) {
+  $form_state['redirect'] = '/cbr';
+}
+
+/** Public functions * */
+
+/** Call cbr_core_register_field to enable case based reasoning on this field type.
+ *  Usally this is done at hook_enable() in the module's .install file.
+ *  Implemente the hook hook_calculate_cbr_similarity_per_field for the field type as well, otherwise 
+ *  no calculation is done for this field type.
+ *   
+ * @param $field_type The name of the field type that should be registered at the case based reasoning module.
+ */
+function cbr_core_register_field($field_type) {
+    $registered_fields = variable_get('cbr_core_registered_fields', array());
+    if (!in_array($field_type, $registered_fields)) {
+        $registered_fields[] = $field_type;
+    }
+    variable_set('cbr_core_registered_fields', $registered_fields);
+}
+
+/** Call cbr_core_register_field to disable case based reasoning on this field type.
+ *  Usally this is done at hook_disable() in the module's .install file.
+ *   
+ * @param $field_type The name of the field type that should be unregistered at the case based reasoning module.
+ */
+function cbr_core_unregister_field($field_type) {
+    $registered_fields = variable_get('cbr_core_registered_fields', array());
+    $registered_fields = array_diff($registered_fields, array($field_type));
+    variable_set('cbr_core_registered_fields', $registered_fields);
+}
+
+/** Returns true, if a content type has at least one field with an cbr enabled.
+ * 
+ * @param $content_type The content type
+ * @return True, if cbr is active on this content type or false, if not
+ */
+function cbr_core_is_enabled_on_content_type($content_type) {
+    $fields = field_info_instances('node', $content_type);
+    $registered_fields = variable_get('cbr_core_registered_fields', array());
+
+    foreach ($fields as $field_name => $value) {
+        $field_info = field_info_field($field_name);
+        if ((in_array($field_info['type'], $registered_fields) && array_key_exists('cbr_settings', $field_info) && $field_info['cbr_settings']['enabled'] == 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+//** Node-API hooks **/
+function cbr_core_node_insert($node) {
+    if (cbr_core_is_enabled_on_content_type($node->type) && !cbr_core_is_first_node_of_type($node) &&
+    	variable_get('automated_calculation', TRUE)) {
+        cbr_core_calculate_similarity($node->type, $node->nid, 'node/' . $node->nid); // nid added as second argument
+    }
+}
+
+function cbr_core_node_update($node) {
+    if (cbr_core_is_enabled_on_content_type($node->type) && 
+    	!cbr_core_is_first_node_of_type($node) &&
+    	variable_get('automated_calculation', TRUE)) {
+        cbr_core_calculate_similarity($node->type, $node->nid, 'node/' . $node->nid); // nid added as second argument
+    }
+}
+
+function cbr_core_node_delete($node) {
+    db_delete('cbr_similarity_factor')
+            ->condition(db_or()->condition('nid1', $node->nid)->condition('nid2', $node->nid))
+            ->execute();
+}
+
+function cbr_core_is_first_node_of_type($node) {
+    $query = db_select('node', 'n')->condition('type', $node->type);
+    $query->addExpression('COUNT(nid)', 'node_count');
+    return $query->execute()->fetchField() <= 1;
+}
+
+/** Node Type "Case" * */
+function cbr_core_node_info() {
+    $items = array(
+        'case' => array(
+            'name' => t('CBR Case'),
+            'base' => 'node_content',
+            'description' => t('You can define new Cases here'),
+            'has_title' => TRUE,
+            'title_label' => t('Case title'),
+            'help' => '',
+            'comment' => array('status' => 2),
+        )
+    );
+    drupal_alter('node_info', $items);
+    return $items;
+}
+
+function cbr_core_form($node, $form_state) {
+	$node = new stdClass();
+	$node->type = "case";
+	return node_content_form($node, $form_state);
+}
+function cbr_core_weight_form($form, $form_state) {
+	$form = array();
+	$case_type = arg(1);
+	$fields = field_info_instances('node', $case_type);  // get the fields of the selected node/case
+    $registered_fields = variable_get('cbr_core_registered_fields', array());
+    foreach ($fields as $field_name => $value) {
+        $field_info = field_info_field($field_name);
+        $field_type = $field_info['type'];
+        if (in_array($field_type, $registered_fields) && 
+        	isset($field_info['cbr_settings']) &&
+        	$field_info['cbr_settings']['enabled'] == 1) {
+            	$weight = isset($field_info['cbr_settings']['weight']['value']) ? 
+            		(float) $field_info['cbr_settings']['weight']['value'] : $field_info['cbr_settings']['weight'];
+            	$max = isset($field_info['cbr_settings']['max_distance_value']) ? 
+            		$field_info['cbr_settings']['max_distance_value'] : '';
+				$entity_type = 'node';
+				$bundle_name = 'project';
+				$info = field_info_instance('node', $field_name, $case_type);
+				$form['case_type'] = array(
+					'#type' => 'hidden',
+					'#value' => $case_type,
+				);
+				$form[$field_name.'fieldset'] = array(
+					'#type' => 'fieldset', 
+					'#title' => t($info['label']),
+					'#collapsible' => TRUE,
+					'#collapsed' => FALSE,
+					);
+				$form[$field_name.'fieldset'][$field_name.'_weight'] = array(
+					'#type' => 'slider',
+					'#title' => t('Weight'),
+					'#min' => 0,
+					'#max' => 1,
+					'#slider_length' => '300px',
+					'#step' => 0.01,
+					'#left' => t('Min'),
+					'#right' => t('Max'),
+					'#value' => $weight,
+					'#orientation' => 'horizontal',
+					'#slider_style' => 'cinereous',
+					'#size' => 3,
+					);
+				$form[$field_name.'fieldset'][$field_name.'_max'] = array(
+					'#type' => 'textfield',
+					'#title' => t('Maximal distance'),
+					'#default_value' => $max,
+					'#size' => 10,
+					'#maxlength' => 10,
+					'#element_validate' => array('_max_distance'),
+					'#required' => TRUE,
+					);
+				}
+    }
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Submit'),
+		);
+    $form['#submit'][] = 'cbr_core_project_weight_settings_submit';
+	return $form;   
+}
+function _max_distance($element, &$form_state, $form) {
+   if (empty($element['#value'])) {
+     form_error($element, t('This field is required.'));
+   }
+   else if(!is_numeric($element['#value']))
+   	form_error($element, t('Field must be numeric.'));
+   	else if($element['#value']>10000)
+   		form_error($element, t('Value must be smaller 10000.'));
+   		else if($element['#value']<0)
+   		form_error($element, t('Value must be a positive value.'));
+}
+
+function cbr_core_project_weight_settings_submit($form, &$form_state) {
+	$case_type = $form_state['values']['case_type'];
+	$fields = field_info_instances('node', $case_type);
+	$registered_fields = variable_get('cbr_core_registered_fields', array());
+	foreach ($fields as $field_name => $value) {
+        $field_info = field_info_field($field_name);
+        $field_type = $field_info['type'];
+        if (in_array($field_type, $registered_fields) && 
+        	isset($field_info['cbr_settings']) &&
+        	$field_info['cbr_settings']['enabled'] == 1) {
+        		$updated_field['field_name'] = $field_name;
+        		$updated_field['cbr_settings']['enabled'] = true;
+        		$updated_field['cbr_settings']['max_distance_value'] = 
+        			$form_state['values'][$field_name.'_max'];
+        		$updated_field['cbr_settings']['weight'] = 
+        			$form_state['values'][$field_name.'_weight'];
+        		field_update_field($updated_field);
+			}
+	}
+	$form_state['redirect'] = "/cbr";
+}
+function cbr_core_view($node, $view_mode) {
+	if($node="stakeholder" && $view_mode=="stakeholder_info")
+	{
+	}
+    else return $node;
+}
+
+function cbr_core_user_view($account, $view_mode) {
+	if ($view_mode == 'full_name') {
+		//$account->content = array();
+		$account->content['full_name'] = array(
+    		'#type' => 'markup',
+    	   	'#markup' => theme('custom_user_name_view', array('name' => $account->field_first_name['und'][0]['value'].' '.$account->field_last_name['und'][0]['value'])),
+    	);
+  }
+	if ($view_mode == 'abbreviated_name') {
+		 $account->content['abbreviated_name'] = array(
+    		'#type' => 'markup',
+			'#markup' => theme('custom_user_name_view', array('name' => $account->field_last_name['und'][0]['value'].', '.$account->field_first_name['und'][0]['value'][0].'.'))
+    	);
+	}
+}
+/** Views * */
+function cbr_core_views_api() {
+    return array(
+        'file' => 'cbr_core.views.inc',
+        'api' => 2.0
+    );
+}
+/**
+ * Implements hook_entity_info_alter().
+ */
+function cbr_core_entity_info_alter(&$info) {
+  $info['user']['view modes'] += array(
+    'full_name' => array(
+      'label' => t('Full Name'),
+      'custom settings' => TRUE,
+    ),
+    'abbreviated_name' => array(
+      'label' => t('Abbreviated Name'),
+      'custom settings' => TRUE,
+    ),
+  );
+  $info['node']['view modes'] += array(
+    'stakeholder_info' => array(
+      'label' => t('Stakeholder'),
+      'custom settings' => TRUE,
+    ),
+  );
+}
+/**
+ * Implements hook_theme().
+ */
+function cbr_core_theme($existing, $type, $theme, $path) {
+    return array(
+      'custom_user_name_view' => array(
+      	'variables' => array('name' => NULL,),
+          'template' => 'custom_user_name_view',
+       ),
+
+    );
+}
+// 
+function cbr_assert_handler($file, $line, $code, $desc = null)
+{
+    echo "Assertion failed in $file:$line: $code";
+    if ($desc) {
+        echo ": $desc";
+    }
+    echo "\n";
+}
+/**
+ *  Implements hook_form_alter().
+ */
+// user_profile_form
+function cbr_user_register_form_alter(&$form, &$form_state, $form_id) {
+	if ($form_id === 'user_profile_form' ) { //NOTE: You might want to add role/permission check before disabling the mail field
+		$form['account']['mail']['#disabled'] = true;
+		$form['account']['mail']['#default_value'] = 'musterperson@gmx.at';
+		//$form['account']['mail']['#access'] = FALSE;
+		$form['account']['signature']['#access'] = FALSE;
+		$form['field_first_name']['#weight'] = -50;
+		$form['field_last_name']['#weight'] = -49;
+		$form['field_matr_nr']['#weight'] = -48;
+		$form['account']['pass']['#access'] = FALSE; //remove the "timezone" field from the form (default value is still saved)
+		$form['timezone']['#access'] = FALSE; //remove the "timezone" field from the form (default value is still saved)
+		//$form['account']['password']['#disabled'] = true;
+  }
+}

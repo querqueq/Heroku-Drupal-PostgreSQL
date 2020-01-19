@@ -1,0 +1,215 @@
+<?php
+
+function cbr_core_field_schema($field) {
+    switch ($field['type']) {
+        case 'cbr_number' :
+            $schema = array(
+                'columns' => array(
+                    'value' => array(
+                        'type' => 'float',
+                        'not null' => FALSE
+                    ),
+                ),
+            );
+            break;
+        case 'cbr_computed' :
+        {
+    		$settings = $field['settings'];
+    		if ($settings['store']) {
+      			$columns = array('value' => array());
+      			// Hardcoded 'longtext' settings.
+     			 if ($settings['database']['data_type'] == 'longtext') {
+       				 $columns['value']['type'] = 'text';
+        			 $columns['value']['size'] = 'big';
+      			 }
+      			 else {
+        			$columns['value']['type'] = isset($settings['database']['data_type'])
+        			 ? $settings['database']['data_type'] : 'varchar';
+      			 }
+      			 // 'text' and 'varchar' fields get length settings.
+      			 if ($settings['database']['data_type'] == 'text' || 
+      			 		$settings['database']['data_type'] == 'varchar') {
+       		 	 	$columns['value']['length'] = isset($settings['database']['data_length']) ? $settings['database']['data_length'] : 32;
+      		 	}
+      			// 'int' and 'float' fields get size settings.
+      			if ($settings['database']['data_type'] == 'int' || 
+      					$settings['database']['data_type'] == 'float') {
+        			$columns['value']['size'] = isset($settings['database']['data_size'])
+        				 ? $settings['database']['data_size'] : 'normal';
+      			}
+      			// 'decimal' fields get precision and scale settings.
+      			if ($settings['database']['data_type'] == 'numeric') {
+        			$columns['value']['precision'] = isset($settings['database']['data_precision']) ? $settings['database']['data_precision'] : 10;
+        			$columns['value']['scale'] = isset($settings['database']['data_scale']) ? $settings['database']['data_scale'] : 2;
+      			}
+      			// Add 'not null' settings.
+      			$columns['value']['not null'] = isset($settings['database']['data_not_NULL']) ? $settings['database']['data_not_NULL'] : TRUE;
+      			// Add default values if set.
+      			if ($settings['database']['data_default'] !== '') {
+        			$columns['value']['default'] = $settings['database']['data_default'];
+      			}
+      			// Add a simple index on the data if requested (except 'text' fields).
+      			if ($settings['database']['data_index'] && $columns['value']['type'] != 'text') {
+       				$indexes = array('value' => array('value'));
+      			}
+   			}
+			if (isset($columns) && isset($indexes)) {
+    			$schema = array('columns' => $columns,'indexes' => $indexes);
+  			}
+  			elseif (isset($columns)) {
+    			$schema = array('columns' => $columns);
+        	}
+        	break;
+        }
+        case 'cbr_range' :
+            $column = array(
+                'type' => 'float',
+                'not null' => FALSE,
+            );
+            $schema = array(
+                'columns' => array(
+                    'from' => $column,
+                    'to' => $column
+                )
+            );
+            break;
+        case 'cbr_select' :
+            $schema = array(
+                'columns' => array(
+                    'value' => array('type' => 'float','not null' => FALSE),),
+                'indexes' => array('value' => array('value'),),);
+            break;
+        case 'cbr_taxonomy':
+            $schema = array(
+                'columns' => array(
+                    'tid' => array(
+                        'type' => 'int',
+                        'unsigned' => TRUE,
+                        'not null' => FALSE,
+                    ),
+                ),
+                'indexes' => array(
+                    'tid' => array('tid'),
+                ),
+                'foreign keys' => array(
+                    'tid' => array(
+                        'table' => 'taxonomy_term_data',
+                        'columns' => array('tid' => 'tid'),
+                    ),
+                ),
+            );
+            break;
+     }
+   return $schema;
+}
+
+function cbr_core_schema() {
+    $schema['cbr_similarity_factor'] = array(
+        'description' => 'Stores a similarity factor for each base case assignment.',
+        'fields' => array(
+            'nid1' => array(
+                'description' => 'The first base case for the similarity factor',
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'nid2' => array(
+                'description' => 'The second base case for the similarity factor.',
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'similarity_factor' => array(
+                'description' => 'The similarity factor between case base 1 and case base 2.',
+                'type' => 'float',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+        ),
+        'primary key' => array('nid1', 'nid2'),
+    );
+    return $schema;
+}
+
+function cbr_core_install() {
+    node_types_rebuild();
+    //Set weight higher than drupal's comment module (has weight 0) to prevent some errors
+    db_query("UPDATE {system} SET weight = 98 WHERE name = 'cbr_core'");
+}
+
+
+function cbr_core_uninstall() {
+    $node_type = 'case';
+    node_type_delete($node_type);
+    $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+    $result = db_query($sql, array(':type' => $node_type));
+    $nodeids = array();
+    foreach ($result as $row) {
+        $nodeids[] = $row->nid;
+    }
+    node_delete_multiple($nodeids);
+    field_purge_batch(500);
+    drupal_flush_all_caches();
+}
+
+
+/** Implements hook_enable()
+ */
+function cbr_core_enable() {
+    $default_theme = variable_get('theme_default', 'bartik');
+    $alias = array('source' => 'node/add/case', 'alias' => 'cbr/add_case');
+    path_save($alias);
+
+
+    //Comments off
+    variable_set('comment_case', '0');
+
+    cbr_core_register_field('cbr_number');
+    cbr_core_register_field('cbr_range');
+    cbr_core_register_field('cbr_select');
+    cbr_core_register_field('cbr_taxonomy');
+    cbr_core_register_field('cbr_computed');
+    cbr_core_register_field('entityreference');
+
+    $block = array(
+        'status' => 1,
+        'weight' => 9,
+        'region' => 'content',
+        'visibility' => 0,
+        'pages' => '*/edit',
+        'module' => 'views',
+        'theme' => $default_theme,
+        'delta' => 'cbr_similar_cases_view-block_1',
+    );
+    db_merge('block')
+            ->key(array(
+                'theme' => $block['theme'],
+                'module' => $block['module'],
+                'delta' => $block['delta'],
+            ))
+            ->fields(array(
+                'status' => $block['status'],
+                'weight' => $block['weight'],
+                'region' => $block['region'],
+                'visibility' => $block['visibility'],
+                'pages' => $block['pages'],
+            ))
+            ->execute();
+    global $base_url;
+    $ac = variable_set('cbr_automated_calculation', 1);
+	$bc = variable_set('cbr_build_similarity_structure', 1);
+	$cc = variable_set('cbr_inverse_similarity', 1);
+	$dc = variable_set('cbr_max_distance', 3);
+	$ec = variable_set('cbr_detailed_results', 0);
+
+    drupal_set_message('Please read the <a href="' . $base_url . '/admin/config/cbr/start">Getting Started Guide</a> for the CBR Core Module!');
+        drupal_goto('/cbr/cases');
+}
+function cbr_core_disable() {
+    cbr_core_unregister_field('cbr_number');
+    cbr_core_unregister_field('cbr_range');
+    cbr_core_unregister_field('cbr_select');
+    cbr_core_unregister_field('cbr_taxonomy');
+    cbr_core_unregister_field('cbr_computed');
+    cbr_core_unregister_field('entityreference');
+}

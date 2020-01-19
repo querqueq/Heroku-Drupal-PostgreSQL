@@ -1,0 +1,6 @@
+name = CBR Example 
+description = Provides an example with some data for Case Based Reasoning 
+core = 7.x
+version = 1.0
+package = Case Based Reasoning
+dependencies[] = cbr_core

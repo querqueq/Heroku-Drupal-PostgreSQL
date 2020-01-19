@@ -1,0 +1,36 @@
+<?php
+
+function cbr_date_field_calculate_cbr_factor_per_field($node1, $node2, $field_name, $fieldinfo) {
+    //Get the field's language
+    $field_language1 = field_language('node', $node1, $field_name);
+    $field_language2 = field_language('node', $node2, $field_name);
+
+    //Choose the right field type
+    if ($fieldinfo['type'] == 'datestamp') {
+        //Use cbr_core_get_field_value from cbr_core_calculate.inc to get the value from a field
+        $node1_fieldvalue = cbr_core_get_field_value($node1, $field_name, $field_language1, 'value');
+        $node2_fieldvalue = cbr_core_get_field_value($node2, $field_name, $field_language2, 'value');
+
+        //Check if end date exists
+        if (_cbr_date_field_check_if_value2_exists($node1, $field_name, $field_language1) && _cbr_date_field_check_if_value2_exists($node2, $field_name, $field_language2)) {
+            $node1_fieldvalue2 = cbr_core_get_field_value($node1, $field_name, $field_language1, 'value2');
+            $node2_fieldvalue2 = cbr_core_get_field_value($node2, $field_name, $field_language2, 'value2');
+            //Begin and end timestamp: Sum of the difference between each two timestamps
+            return abs($node1_fieldvalue - $node2_fieldvalue) + ($node1_fieldvalue2 - $node2_fieldvalue2);
+        }
+        //One timestamp: Abs-Diff between the two timestamps
+        return abs($node1_fieldvalue - $node2_fieldvalue);
+    }
+    //Important! To use the default implementation for all other field types, return NULL
+    return NULL;
+}
+
+function _cbr_date_field_check_if_value2_exists($node, $field_name, $field_language) {
+    //Transform object into array
+    $node_values = get_object_vars($node);
+
+    if (array_key_exists($field_language, $node_values[$field_name]) && array_key_exists(0, $node_values[$field_name][$field_language])) {
+        return array_key_exists($node_values[$field_name][$field_language][0]['value2']);
+    }
+    return false;
+}

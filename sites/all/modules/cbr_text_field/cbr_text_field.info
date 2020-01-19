@@ -1,0 +1,7 @@
+name = CBR Textfield
+description = Provides case based reasoning for the textfield
+core = 7.x
+version = 1.0
+package = Case Based Reasoning
+dependencies[] = cbr_core
+dependencies[] = text

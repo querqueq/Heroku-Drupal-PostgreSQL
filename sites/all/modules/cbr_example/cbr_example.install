@@ -1,0 +1,766 @@
+<?php
+
+function cbr_example_install() {
+	dsm("install");
+    node_types_rebuild();
+    cbr_example_add_custom_fields();
+
+    //Set weight higher than drupal's comment module (has weight 0) to prevent some errors
+    db_query("UPDATE {system} SET weight = 99 WHERE name = 'cbr_example'");
+}
+
+function cbr_example_add_custom_fields() {
+    foreach (_cbr_example_installed_fields() as $field) {
+        field_create_field($field);
+    }
+    foreach (_cbr_example_installed_instances() as $fieldinstance) {
+        field_create_instance($fieldinstance);
+    }
+}
+
+function _cbr_example_installed_fields() {
+	dsm("install_fields");
+    $field_bases = array();
+    $field_bases['field_cbr_budget'] = array(
+        'active' => 1,
+        'cardinality' => 1,
+        'deleted' => 0,
+        'entity_types' => array(),
+        'field_name' => 'field_cbr_budget',
+        'indexes' => array(),
+        'locked' => 0,
+        'module' => 'number',
+        'settings' => array(
+            'decimal_separator' => ',',
+        ),
+        'cbr_settings' => array(
+            'enabled' => 1,
+            'weight' => 0.4,
+            'max_distance_value' => 10000,
+        ),
+        'translatable' => 0,
+        'type' => 'cbr_number',
+    );
+
+    $field_bases['field_cbr_size'] = array(
+        'active' => 1,
+        'cardinality' => 1,
+        'deleted' => 0,
+        'entity_types' => array(),
+        'field_name' => 'field_cbr_size',
+        'indexes' => array(
+            'value' => array(
+                0 => 'value',
+            ),
+        ),
+        'locked' => 0,
+        'module' => 'list',
+        'settings' => array(
+            'allowed_values' => array(
+                1 => 'Small',
+                2 => 'Medium',
+                3 => 'Big',
+            ),
+            'allowed_values_function' => '',
+        ),
+        'cbr_settings' => array(
+            'enabled' => 1,
+            'weight' => 0.3,
+            'max_distance_value' => 10,
+        ),
+        'translatable' => 0,
+        'type' => 'cbr_select',
+    );
+
+    $field_bases['field_cbr_status'] = array(
+        'active' => 1,
+        'cardinality' => 1,
+        'deleted' => 0,
+        'entity_types' => array(),
+        'field_name' => 'field_cbr_status',
+        'indexes' => array(
+            'value' => array(
+                0 => 'value',
+            ),
+        ),
+        'locked' => 0,
+        'module' => 'list',
+        'settings' => array(
+            'allowed_values' => array(
+                0 => 'New',
+                1 => 'In Progress',
+                2 => 'Finished',
+            ),
+            'allowed_values_function' => '',
+        ),
+        'cbr_settings' => array(
+            'enabled' => 1,
+            'weight' => 0.3,
+            'max_distance_value' => 10,
+        ),
+        'translatable' => 0,
+        'type' => 'cbr_select',
+    );
+  $field_bases['field_cbr_duration'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'cbr_settings' => array(
+      'enabled' => 1,
+      'max_distance_value' => 1000,
+      'weight' => 1,
+    ),
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_cbr_duration',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'computed_field',
+    'settings' => array(
+      'code' => '$field_cbr_start = field_get_items($entity_type, $entity, "field_project_start");
+if($field_cbr_start != NULL)
+{
+  $start_date = $field_cbr_start[0]["value"];
+  $start = strtotime($start_date);
+  $field_cbr_end = field_get_items($entity_type, $entity, "field_project_end");
+  if($field_cbr_end != NULL)
+  {
+    $end_date = $field_cbr_end[0]["value"];
+    $end = strtotime($end_date);
+    $duration_month=($end-$start)/2592000;
+    if(isset($end)&&isset($start)) {
+      $entity_field[0][\'value\'] = $duration_month;
+    }
+    else $entity_field[0][\'value\'] = NULL;
+  }
+  else $entity_field[0][\'value\'] = NULL;
+}
+else $entity_field[0][\'value\'] = NULL;',
+      'database' => array(
+        'data_default' => '',
+        'data_index' => 0,
+        'data_length' => 32,
+        'data_not_NULL' => 0,
+        'data_precision' => 10,
+        'data_scale' => 2,
+        'data_size' => 'normal',
+        'data_type' => 'varchar',
+      ),
+      'display_format' => '$display_output = $entity_field_item[\'value\'];',
+      'recalculate' => 0,
+      'store' => 1,
+    ),
+    'translatable' => 0,
+    'type' => 'cbr_computed',
+  );
+  $field_bases['field_cbr_end'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_cbr_end',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'date',
+    'settings' => array(
+      'cache_count' => 4,
+      'cache_enabled' => 0,
+      'granularity' => array(
+        'day' => 'day',
+        'hour' => 0,
+        'minute' => 0,
+        'month' => 'month',
+        'second' => 0,
+        'year' => 'year',
+      ),
+      'timezone_db' => '',
+      'todate' => '',
+      'tz_handling' => 'none',
+    ),
+    'translatable' => 0,
+    'type' => 'date',
+  );
+  $field_bases['field_cbr_start'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_cbr_start',
+    'indexes' => array(),
+    'locked' => 0,
+    'module' => 'date',
+    'settings' => array(
+      'cache_count' => 4,
+      'cache_enabled' => 0,
+      'granularity' => array(
+        'day' => 'day',
+        'hour' => 0,
+        'minute' => 0,
+        'month' => 'month',
+        'second' => 0,
+        'year' => 'year',
+      ),
+      'timezone_db' => '',
+      'todate' => '',
+      'tz_handling' => 'none',
+    ),
+    'translatable' => 0,
+    'type' => 'date',
+  );
+  $field_bases['field_cbr_technology'] = array(
+    'active' => 1,
+    'cardinality' => -1,
+    'cbr_settings' => array(
+      'enabled' => 1,
+      'max_distance_value' => 10,
+      'weight' => 0.8,
+    ),
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_cbr_technology',
+    'indexes' => array(
+      'target_id' => array(
+        0 => 'target_id',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'entityreference',
+    'settings' => array(
+      'handler' => 'base',
+      'handler_settings' => array(
+        'behaviors' => array(
+          'test_field_behavior' => array(
+            'status' => 0,
+          ),
+          'views-select-list' => array(
+            'status' => 0,
+          ),
+        ),
+        'sort' => array(
+          'type' => 'none',
+        ),
+        'target_bundles' => array(
+          'project_technology' => 'project_technology',
+        ),
+      ),
+      'target_type' => 'taxonomy_term',
+    ),
+    'translatable' => 0,
+    'type' => 'entityreference',
+  );
+  $field_bases['field_cbr_type'] = array(
+    'active' => 1,
+    'cardinality' => 1,
+    'cbr_settings' => array(
+      'enabled' => 1,
+      'max_distance_value' => 1000,
+      'weight' => 0.2,
+    ),
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_cbr_type',
+    'indexes' => array(
+      'tid' => array(
+        0 => 'tid',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'taxonomy',
+    'settings' => array(
+      'allowed_values' => array(
+        0 => array(
+          'vocabulary' => 'project_type',
+          'parent' => 0,
+        ),
+      ),
+    ),
+    'translatable' => 0,
+    'type' => 'cbr_taxonomy',
+  );
+
+    return $field_bases;
+}
+
+function _cbr_example_installed_instances() {
+    $field_instances = array();
+    $field_instances['field_cbr_budget'] = array(
+        'bundle' => 'case',
+        'default_value' => NULL,
+        'deleted' => 0,
+        'description' => '',
+        'display' => array(
+            'default' => array(
+                'label' => 'inline',
+                'module' => 'number',
+                'settings' => array(
+                    'decimal_separator' => '.',
+                    'prefix_suffix' => TRUE,
+                    'scale' => 2,
+                    'thousand_separator' => '',
+                ),
+                'type' => 'number_decimal',
+                'weight' => 1,
+            ),
+            'teaser' => array(
+                'label' => 'inline',
+                'settings' => array(),
+                'type' => 'hidden',
+                'weight' => 0,
+            ),
+        ),
+        'entity_type' => 'node',
+        'field_name' => 'field_cbr_budget',
+        'label' => 'Budget',
+        'required' => 0,
+        'settings' => array(
+            'max' => '',
+            'min' => '',
+            'prefix' => '',
+            'suffix' => '',
+            'user_register_form' => FALSE,
+        ),
+        'widget' => array(
+            'active' => 0,
+            'module' => 'number',
+            'settings' => array(),
+            'type' => 'number',
+            'weight' => 1,
+        ),
+    );
+
+    $field_instances['field_cbr_size'] = array(
+        'bundle' => 'case',
+        'default_value' => NULL,
+        'deleted' => 0,
+        'description' => '',
+        'display' => array(
+            'default' => array(
+                'label' => 'inline',
+                'module' => 'list',
+                'settings' => array(),
+                'type' => 'list_default',
+                'weight' => 2,
+            ),
+            'teaser' => array(
+                'label' => 'inline',
+                'settings' => array(),
+                'type' => 'hidden',
+                'weight' => 0,
+            ),
+        ),
+        'entity_type' => 'node',
+        'field_name' => 'field_cbr_size',
+        'label' => 'Size',
+        'required' => 0,
+        'settings' => array(
+            'user_register_form' => FALSE,
+        ),
+        'widget' => array(
+            'active' => 1,
+            'module' => 'options',
+            'settings' => array(),
+            'type' => 'options_select',
+            'weight' => 2,
+        ),
+    );
+
+    $field_instances['field_cbr_status'] = array(
+        'bundle' => 'case',
+        'default_value' => NULL,
+        'deleted' => 0,
+        'description' => '',
+        'display' => array(
+            'default' => array(
+                'label' => 'inline',
+                'module' => 'list',
+                'settings' => array(),
+                'type' => 'list_default',
+                'weight' => 3,
+            ),
+            'teaser' => array(
+                'label' => 'inline',
+                'settings' => array(),
+                'type' => 'hidden',
+                'weight' => 0,
+            ),
+        ),
+        'entity_type' => 'node',
+        'field_name' => 'field_cbr_status',
+        'label' => 'Status',
+        'required' => FALSE,
+        'settings' => array(
+            'user_register_form' => FALSE,
+        ),
+        'widget' => array(
+            'module' => 'options',
+            'settings' => array(),
+            'type' => 'options_select',
+            'weight' => 3,
+        ),
+    );
+  $field_instances['node-case-field_cbr_duration'] = array(
+    'bundle' => 'case',
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 7,
+      ),
+      'teaser' => array(
+        'label' => 'inline',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_cbr_duration',
+    'label' => 'Duration',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 0,
+      'module' => 'computed_field',
+      'settings' => array(),
+      'type' => 'computed',
+      'weight' => 7,
+    ),
+  );
+
+  // Exported field_instance: 'node-case-field_cbr_end'.
+  $field_instances['node-case-field_cbr_end'] = array(
+    'bundle' => 'case',
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'module' => 'date',
+        'settings' => array(
+          'format_type' => 'short',
+          'fromto' => 'both',
+          'multiple_from' => '',
+          'multiple_number' => '',
+          'multiple_to' => '',
+          'show_remaining_days' => 0,
+        ),
+        'type' => 'date_default',
+        'weight' => 6,
+      ),
+      'teaser' => array(
+        'label' => 'inline',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_cbr_end',
+    'label' => 'End',
+    'required' => 0,
+    'settings' => array(
+      'default_value' => 'blank',
+      'default_value2' => 'same',
+      'default_value_code' => '',
+      'default_value_code2' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'date',
+      'settings' => array(
+        'increment' => 15,
+        'input_format' => 'm/d/Y - H:i:s',
+        'input_format_custom' => '',
+        'label_position' => 'above',
+        'no_fieldset' => 1,
+        'text_parts' => array(),
+        'year_range' => '-3:+3',
+      ),
+      'type' => 'date_select',
+      'weight' => 6,
+    ),
+  );
+
+  // Exported field_instance: 'node-case-field_cbr_start'.
+  $field_instances['node-case-field_cbr_start'] = array(
+    'bundle' => 'case',
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'module' => 'date',
+        'settings' => array(
+          'format_type' => 'short',
+          'fromto' => 'both',
+          'multiple_from' => '',
+          'multiple_number' => '',
+          'multiple_to' => '',
+          'show_remaining_days' => 0,
+        ),
+        'type' => 'date_default',
+        'weight' => 5,
+      ),
+      'teaser' => array(
+        'label' => 'inline',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_cbr_start',
+    'label' => 'Start',
+    'required' => 0,
+    'settings' => array(
+      'default_value' => 'now',
+      'default_value2' => 'same',
+      'default_value_code' => '',
+      'default_value_code2' => '',
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'date',
+      'settings' => array(
+        'increment' => 15,
+        'input_format' => 'd.m.Y - H:i:s',
+        'input_format_custom' => '',
+        'label_position' => 'above',
+        'no_fieldset' => 1,
+        'text_parts' => array(),
+        'year_range' => '-3:+3',
+      ),
+      'type' => 'date_select',
+      'weight' => 5,
+    ),
+  );
+
+  // Exported field_instance: 'node-case-field_cbr_technology'.
+  $field_instances['node-case-field_cbr_technology'] = array(
+    'bundle' => 'case',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'entityreference',
+        'settings' => array(
+          'link' => FALSE,
+        ),
+        'type' => 'entityreference_label',
+        'weight' => 8,
+      ),
+      'teaser' => array(
+        'label' => 'above',
+        'settings' => array(),
+        'type' => 'hidden',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'entityconnect' => array(
+      'button' => array(
+        'unload_add_button' => 1,
+        'unload_edit_button' => 1,
+      ),
+      'icon' => array(
+        'show_add_icon' => 0,
+        'show_edit_icon' => 0,
+      ),
+    ),
+    'field_name' => 'field_cbr_technology',
+    'label' => 'Technology',
+    'required' => 0,
+    'settings' => array(
+      'behaviors' => array(
+        'taxonomy-index' => array(
+          'status' => TRUE,
+        ),
+        'test_instance_behavior' => array(
+          'status' => 0,
+        ),
+      ),
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'entityreference',
+      'settings' => array(
+        'match_operator' => 'CONTAINS',
+        'path' => '',
+        'size' => 60,
+      ),
+      'type' => 'entityreference_autocomplete',
+      'weight' => 8,
+    ),
+  );
+
+  // Exported field_instance: 'node-case-field_cbr_type'.
+  $field_instances['node-case-field_cbr_type'] = array(
+    'bundle' => 'case',
+    'default_value' => array(
+      0 => array(
+        'tid' => 3,
+      ),
+    ),
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'module' => 'taxonomy',
+        'settings' => array(),
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 4,
+      ),
+      'teaser' => array(
+        'label' => 'inline',
+        'module' => 'taxonomy',
+        'settings' => array(),
+        'type' => 'taxonomy_term_reference_link',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'node',
+    'field_name' => 'field_cbr_type',
+    'label' => 'Type',
+    'required' => 0,
+    'settings' => array(
+      'user_register_form' => FALSE,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'options',
+      'settings' => array(),
+      'type' => 'options_select',
+      'weight' => 4,
+    ),
+  );
+
+    // Translatables
+    // Included for use with string extractors like potx.
+    t('Budget');
+    t('Size');
+    t('Status');
+  t('Duration');
+  t('End');
+  t('Start');
+  t('Technology');
+  t('Type');
+
+    return $field_instances;
+}
+
+function cbr_example_uninstall() {
+	$vocab = taxonomy_vocabulary_machine_name_load('project_type');
+  	if($vocab && $vocab->vid) taxonomy_vocabulary_delete($vocab->vid);
+	$vocab = taxonomy_vocabulary_machine_name_load('project_technology');
+  	if($vocab && $vocab->vid) taxonomy_vocabulary_delete($vocab->vid);
+	$node_type = 'case';
+    $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+    $result = db_query($sql, array(':type' => $node_type));
+    $nodeids = array();
+    foreach ($result as $row) {
+        $nodeids[] = $row->nid;
+    }
+    node_delete_multiple($nodeids);
+    cbr_example_delete_custom_fields();
+    field_attach_delete_bundle('node',$node_type);
+    field_purge_batch(500);
+    drupal_flush_all_caches();
+}
+
+function cbr_example_delete_custom_fields() {
+    $instances = field_info_instances('node', 'case');
+    foreach ($instances as $instance) {
+        field_delete_instance($instance, TRUE);
+        field_purge_batch(2);
+    }
+    foreach (array_keys(_cbr_example_installed_fields()) as $field) {
+        field_delete_field($field);
+    }
+}
+
+/*
+ * Implements hook_enable()
+ */
+function cbr_example_enable() {
+    _create_taxonomies();
+	_create_some_cases();
+    drupal_goto('/cbr/cases');
+}
+function _create_taxonomies() {
+	$vocab = (object) array(
+  		'name' => 'Project Type',
+		'machine_name' => 'project_type');
+	taxonomy_vocabulary_save($vocab);
+	$vid= $vocab->vid;
+	$terms = array();
+	$terms[] = 'Academic Project';
+	$terms[] = 'Research Project';
+	$terms[] = 'Development Project';
+	$terms[] = 'Integration Project';
+	foreach ($terms as $term) {
+		taxonomy_term_save((object) array('name' => $term, 'vid' => $vid));
+	}
+	$vocab = (object) array(
+  		'name' => 'Project Technology',
+		'machine_name' => 'project_technology');
+	taxonomy_vocabulary_save($vocab);
+	$vid= $vocab->vid;
+	$terms = array();
+	$terms[] = 'Drupal 7';
+	$terms[] = 'Java';
+	$terms[] = 'PHP';
+	$terms[] = 'Javascript';
+	$terms[] = 'Pearl';
+	$terms[] = 'C++';
+	$terms[] = 'Prolog';
+	$terms[] = 'Pascal';
+	foreach ($terms as $term) {
+		taxonomy_term_save((object) array('name' => $term, 'vid' => $vid));
+	}
+}
+function _create_some_cases() {
+	$ac = variable_get('automated_calculation', TRUE);
+	variable_set('automated_calculation', FALSE);
+	_create_case('Case 1', 1, 1000, 0, 'Academic Project', '2016-11-18T00:00:00', NULL, array('Drupal 7'));
+	_create_case('Case 2', 1, 6000, 0, 'Academic Project', '2016-11-18T00:00:00', NULL, array('Drupal 7','Java'));
+	_create_case('Case 3', 2, 7000, 1, 'Academic Project', '2015-11-18T00:00:00', NULL, array('Java'));
+	_create_case('Case 4', 1, 10000, 1, 'Academic Project', '2016-11-18T00:00:00', NULL, array('Drupal 7'));
+	_create_case('Case 5', 1, 60000, 2, 'Academic Project', '2016-11-18T00:00:00', NULL, array('Drupal 7','Java','Pearl'));
+	_create_case('Case 6', 2, 78000, 2, 'Academic Project', '2015-11-18T00:00:00', NULL, array('Java'));
+	variable_set('automated_calculation', $ac);
+	cbr_core_calculate_similarity('case',0,200);
+}
+function _create_case($title, $size, $budget, $status, $type, $start, $end=NULL, $technology_terms) {
+  $node = new stdClass();
+  $node->type = 'case';
+  $types = taxonomy_get_term_by_name($type);
+  $project_type =array_values($types)[0];
+  node_object_prepare($node);
+  $node->title    = $title;
+  $node->language = LANGUAGE_NONE;
+  $node->field_cbr_size[$node->language][0]['value']   = $size;
+  $node->field_cbr_budget[$node->language][0]['value'] = $budget;
+  $node->field_cbr_status[$node->language][0]['value']  = $status;
+  $node->field_cbr_start[$node->language][0]['value']   = $start;
+  if(isset($end)) $node->field_cbr_end[$node->language][0]['value'] = $end;
+  $node->field_cbr_type[$node->language][0]['tid']  = $project_type->tid;
+  foreach($technology_terms as $term_name) {
+   	$terms = taxonomy_get_term_by_name($term_name);
+   	$term=array_values($terms)[0];
+  	$node->field_cbr_technology[$node->language][]=
+  		array('target_id' => $term->tid, 'target_type' => 'taxonomy_term');
+  	}
+  node_save($node);
+}
+function cbr_example_disable() {
+}

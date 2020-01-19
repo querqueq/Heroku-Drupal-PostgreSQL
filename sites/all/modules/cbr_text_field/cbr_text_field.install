@@ -1,0 +1,17 @@
+<?php
+
+/** Implements hook_enable()
+ */
+function cbr_text_field_enable() {
+    cbr_core_register_field('text');
+    cbr_core_register_field('text_long');
+    cbr_core_register_field('text_with_summary');
+}
+
+/** Implements hook_disable()
+ */
+function cbr_text_field_disable() {
+    cbr_core_unregister_field('text');
+    cbr_core_unregister_field('text_long');
+    cbr_core_unregister_field('text_with_summary');
+}

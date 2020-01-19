@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Case Based Reasoning Module for Drupal 7</title>
+        <link rel="stylesheet" href="base.css" />
+        <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    </head>
+    <body><div class="container"><h1 id="case-based-reasoning-module-for-drupal-7">Case Based Reasoning Module for Drupal 7</h1>
+            <div class="toc">
+                <ul>
+                    <li><a href="#advanced-getting-started-guide">Advanced Getting Started Guide</a><ul>
+                            <li><a href="#create-a-custom-content-type-with-cbr">Create a custom content type with CBR</a></li>
+                            <li><a href="#create-a-view-for-similar-cases">Create a view for similar cases</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#calculation-of-similarity">Calculation of Similarity</a><ul>
+                            <li><a href="#calculation">Calculation</a><ul>
+                                    <li><a href="#calculation-per-field">Calculation per Field</a><ul>
+                                            <li><a href="#number-select">Number / Select</a></li>
+                                            <li><a href="#range">Range</a></li>
+                                            <li><a href="#taxonomy">Taxonomy</a></li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="#normalization">Normalization</a></li>
+                            <li><a href="#save-to-database">Save to database</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#api-reference">API Reference</a><ul>
+                            <li><a href="#hooks">Hooks</a><ul>
+                                    <li><a href="#hookcalculatecbrsimilarityperfield">hook_calculate_cbr_similarity_per_field</a></li>
+                                    <li><a href="#hookcbrcorecalculatesimilaritybatchalter">hook_cbr_core_calculate_similarity_batch_alter</a></li>
+                                    <li><a href="#hookcbrcorebatchcalculationcontextalter">hook_cbr_core_batch_calculation_context_alter</a></li>
+                                    <li><a href="#hookcbrcorebatchnormalizationcontextalter">hook_cbr_core_batch_normalization_context_alter</a></li>
+                                    <li><a href="#hookcbrcorebatchsavecontextalter">hook_cbr_core_batch_save_context_alter</a></li>
+                                </ul>
+                            </li>
+                            <li><a href="#public-functions">Public functions</a><ul>
+                                    <li><a href="#function-cbrcoreregisterfield">function  cbr_core_register_field</a></li>
+                                    <li><a href="#function-cbrcoreunregisterfield">function cbr_core_unregister_field</a></li>
+                                    <li><a href="#function-cbrcoreisenabledoncontenttype">function cbr_core_is_enabled_on_content_type</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                    <li><a href="#implementing-cbr-on-an-existing-field">Implementing CBR on an existing field</a></li>
+                </ul>
+            </div>
+
+
+            <h1 id="advanced-getting-started-guide">Advanced Getting Started Guide</h1>
+
+            <p>The Case Based Reasoning Module for Drupal 7 allows you to save and organize information in cases.  You can create a new case at <strong>“Add content”</strong> » <strong>“CBR Case”</strong>.  Create at least three cases to see how the module works.  </p>
+
+            <blockquote>
+                <p>You can add or remove fields from the content type <strong>“Case</strong>” or create your own content type with case based reasoning enabled. Read more at <a href="#create-a-custom-content-type-with-cbr">Create a custom content type with CBR</a>.</p>
+            </blockquote>
+
+            <p>Move the Block “View: CBR Similar Cases View” to any region you like. This block displays similar cases when enabled on a content type with one or more case based reasoning fields. Browse to one of your created cases. The view you enabled in this step should show a table with at least two other cases. The last column shows the <strong>similarity</strong>. This is always a number between <strong>1</strong> (highest possible similarity) and <strong>0</strong> (lowest possible similarity). </p>
+
+            <blockquote>
+                <p>More details about the calculation of the similarity at <a href="#calculation-of-similarity">Calculation of Similarity</a>. </p>
+            </blockquote>
+
+
+
+            <h2 id="create-a-custom-content-type-with-cbr">Create a custom content type with CBR</h2>
+
+            <p>Create a new content type in drupal at <strong>“Administration”</strong> » <strong>“Structure”</strong> » <strong>“Content types”</strong> » <strong>“Add content type”</strong>. Save your content type and then click <strong>“manage fields”</strong>. To enable case based reasoning on this content type, add at least one field of the field type <strong>“CBR Number”</strong>, <strong>“CBR Range”</strong>, <strong>“CBR Select”</strong> or <strong>“CBR Taxonomy / Term Reference”</strong> or another field type listed at <strong>“Administration”</strong> » <strong>“Configuration”</strong>  » <strong>“Case Based Reasoning”</strong> » <strong>“Registered CBR fields”</strong>.</p>
+
+            <p>Each field with CBR enabled has the following field settings: <br>
+                <img src="screenshot1.png" alt="Field settings" title=""> <br>
+                These settings are applyed to the field on every content type it is used. If you use the field on multiply content types, you may turn on or off case based reasoning or change the attribute weight inadvertently on another type of content. It is recommended to use a field only on one content type.</p>
+
+            <p>If you check off <strong>“Case Based Reasoning enabled”</strong>, all values of the field are still saved and can be edited as well, but they will be ignored at the <a href="#calculation-of-similarity">calculation of the similarity</a>.  </p>
+
+            <p>Each similarity of a field is multiplied with the <strong>“Attribute Weight”</strong> during the calculatation of the similarity over all fields. More at <a href="#normalization">normalization</a>.</p>
+
+            <blockquote>
+                <p>You can change these settings even after nodes of this content type are saved. To apply the new settings to existing nodes and similarities, go to <strong>“Administration”</strong> » <strong>“Configuration”</strong>  » <strong>“Case Based Reasoning”</strong> » <strong>“Registered CBR fields”</strong> and select your content type at <strong>“Recalculate Similarity”</strong> and click <strong>“Recalculate”</strong>. </p>
+            </blockquote>
+
+
+
+            <h2 id="create-a-view-for-similar-cases">Create a view for similar cases</h2>
+
+            <p>You can create a view like <strong>“CBR Similar Cases View”</strong> for your own content type.  Install and enable the <strong>“Views UI”-Module</strong> if you haven’t done it yet. Go to <strong>“Administration”</strong> » <strong>“Structure”</strong> » <strong>“Views”</strong> » <strong>“Add new view”</strong>. Enter a name for your view, select show <strong>“Content”</strong> and choose your content type. Untick <strong>“Create a page”</strong> and check <strong>“Create a block”</strong>. Select <strong>“Table”</strong> as display format and click <strong>“Continue &amp; edit”</strong>.</p>
+
+            <p>Click on <strong>“Fields”</strong> » <strong>“Add”</strong>  and check <strong>“Case Based Reasoning: Similarity”</strong> and any other fields you want to include in your view and click on <strong>“Add and configure fields”</strong>. Configure your fields and click on <strong>“Apply”</strong>.</p>
+
+            <p>Next, click on <strong>“Sort criteria”</strong> and check <strong>“Case Based Reasoning: Similarity”</strong>. Then click on <strong>“Apply (all displays)”</strong>. Select <strong>“Sort descending”</strong> to show the most similar case at the first position and finish with <strong>“Apply (all displays)”</strong>. If there is any other sort criteria, click on it to remove.</p>
+
+            <p>Click on <strong>“Advanced”</strong> and then on <strong>“Add”</strong> at <strong>“Contextual filters”</strong>. Check <strong>“Case Based Reasoning: Base Case Node ID”</strong> and click <strong>“Apply (all displays)”</strong>.</p>
+
+            <p>Select <strong>“Provide default value”</strong> at <strong>“When the filter value is NOT available”</strong> and set <strong>“Content ID from URL”</strong> as type. Click on <strong>“Apply (all displays)”</strong>.</p>
+
+            <p><img src="screenshot2.png" alt="Contextual filter settings" title=""></p>
+
+            <p>Click <strong>“Save”</strong>, go to <strong>“Administration”</strong> » <strong>“Structure”</strong> » <strong>“Blocks”</strong> and move your block to a visible region.</p>
+
+            <blockquote>
+                <p>To prevent multiple CBR blocks are displayed on one page, click on <strong>“configure”</strong> and select the required content types at <strong>“Visibility settings”</strong> » <strong>“Content types”</strong>.</p>
+            </blockquote>
+
+
+
+            <h1 id="calculation-of-similarity">Calculation of Similarity</h1>
+
+            <p>The similarity is a number between <strong>1</strong> (highest possible similarity between two nodes) and <strong>0</strong> (lowest possible similarity between two nodes). The similarity is calculated at the call of the hooks <strong>node_insert</strong> and <strong>node_update</strong> and saved in the database. It is only calculated if the content type has at least one field with case based reasoning enabled, and if there is at least another node of the same content type in the database. At the call of the hook <strong>node_delete</strong> the similarity for this node is removed from the database. </p>
+
+            <p>You can trigger the calculation manually at  <strong>“Administration”</strong> » <strong>“Configuration”</strong>  » <strong>“Case Based Reasoning”</strong> » <strong>“Registered CBR fields”</strong> » <strong>“Recalculate Similarity”</strong> » <strong>“Recalculate”</strong> too.</p>
+
+            <p>The calculation is processed with the drupal batch api in three steps:</p>
+
+            <ol>
+                <li><a href="#calculation">Calculation</a></li>
+                <li><a href="#normalization">Normalization</a></li>
+                <li><a href="#save-to-database">Save to database</a></li>
+            </ol>
+
+
+
+            <h2 id="calculation">Calculation</h2>
+
+            <p>First, all node ids of the selected content type are loaded. Next, all fields from the content type are loaded. Only if the field type was registered at the public <a href="#cbrcoreregisterfield">cbr_core_register_field</a> function and if the user set case based reasoning to <strong>“enabled”</strong> on this field, the field is used for the calculation of the similarity.</p>
+
+            <p>With each pass through the callback, the similarity of one node to all other nodes of its type is calculated. For each pair of nodes  and for each field the function <strong>“cbr_core_calculate_similarity_per_field”</strong> is called. </p>
+
+
+
+            <h3 id="calculation-per-field">Calculation per Field</h3>
+
+            <p>The similarity is calculated in the function <strong>“cbr_core_calculate_similarity_per_field”</strong> for a pair of nodes for a certain field. According to the field type, the calculation is different:</p>
+
+
+
+            <h4 id="number-select">Number / Select</h4>
+
+            <p>The stored value for each <strong>“Select”</strong> field and <strong>“Number”</strong> field is a numeric value, therefore the calculations for the <strong>“Number”</strong> field type and the <strong>“Select”</strong> field type are the same.</p>
+
+            <p>The similarity is the absolute difference between the two values: <br>
+                <script type="math/tex; mode=display" id="MathJax-Element-5">
+                    similarty\_per\_field(node1\_valueX, node2\_valueX) =\\ |node1\_valueX-node2\_valueX|
+                </script></p>
+
+
+
+            <h4 id="range">Range</h4>
+
+            <p>Each <strong>“Range”</strong> field has a <strong>from</strong> value and a <strong>to</strong> value. Both values are numeric values.</p>
+
+            <p>The similarity is the sum of the absolute difference between the two  <strong>from</strong> values plus the  absolute difference between the two  <strong>to</strong> values: <br>
+                <script type="math/tex; mode=display" id="MathJax-Element-6">
+                    similarty\_per\_field(node1\_fromX, node1\_toX, node2\_fromX, node2\_toX) = \\
+                    |node1\_fromX-node2\_fromX|+|node1\_toX-node2\_toX|
+                </script></p>
+
+
+
+            <h4 id="taxonomy">Taxonomy</h4>
+
+            <p>Each taxonomy can be represented as a tree. The similarity between two nodes is the shortest path from an element in the tree to the other one. If both nodes are the same, the similarity is 0 (After the normalization and the invertation, the similarity is 1). Otherwise the <strong>“Lowest Common Ancestor” (LCA)</strong>  between the two nodes is identified. The similarity is the number of the elements between the <strong>“LCA”</strong> and the term of the first node plus the number of the elements between the <strong>“LCA”</strong> and the term of the second node. </p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-keyword">if</span> (<span class="hljs-variable">$node1_tid</span> == <span class="hljs-variable">$node2_tid</span>) {
+    <span class="hljs-variable">$similarity</span> = <span class="hljs-number">0</span>; <span class="hljs-comment">//is inverted later to 1</span>
+} <span class="hljs-keyword">else</span> {
+    <span class="hljs-variable">$parents1</span> = taxonomy_get_parents_all(<span class="hljs-variable">$node1_tid</span>);
+    <span class="hljs-variable">$parents2</span> = taxonomy_get_parents_all(<span class="hljs-variable">$node2_tid</span>);
+    <span class="hljs-variable">$similarity</span> = cbr_core_calculate_taxonomy_tree_distance(<span class="hljs-variable">$parents1</span>, <span class="hljs-variable">$parents2</span>);
+}</code></pre>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cbr_core_calculate_taxonomy_tree_distance</span><span class="hljs-params">(<span class="hljs-variable">$parents1</span>, <span class="hljs-variable">$parents2</span>)</span> {</span>
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">empty</span>(<span class="hljs-variable">$parents1</span>)) {
+        <span class="hljs-keyword">return</span> count(<span class="hljs-variable">$parents2</span>);
+    }
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">empty</span>(<span class="hljs-variable">$parents2</span>)) {
+        <span class="hljs-keyword">return</span> count(<span class="hljs-variable">$parents1</span>);
+    }
+    <span class="hljs-comment">//Select the last element of the parents array</span>
+    <span class="hljs-comment">//This is the root of the tree</span>
+    <span class="hljs-variable">$term1</span> = end(<span class="hljs-variable">$parents1</span>);
+    <span class="hljs-variable">$term2</span> = end(<span class="hljs-variable">$parents2</span>);
+
+    <span class="hljs-comment">//While both have the same term id, we move down the tree</span>
+    <span class="hljs-keyword">while</span> (<span class="hljs-variable">$term1</span>-&gt;tid == <span class="hljs-variable">$term2</span>-&gt;tid) {
+        array_pop(<span class="hljs-variable">$parents1</span>);
+        array_pop(<span class="hljs-variable">$parents2</span>);
+        <span class="hljs-variable">$term1</span> = end(<span class="hljs-variable">$parents1</span>);
+        <span class="hljs-variable">$term2</span> = end(<span class="hljs-variable">$parents2</span>);
+    }
+    <span class="hljs-comment">//We found the Lowest Common Ancestor (LCA)! </span>
+    <span class="hljs-comment">//$parents1 and $parents2 contain the path to the LCA, so we return the sum </span>
+    <span class="hljs-comment">//of the number of the elements, because it's the distance between the two elements</span>
+    <span class="hljs-keyword">return</span> count(<span class="hljs-variable">$parents1</span>) + count(<span class="hljs-variable">$parents2</span>);
+}</code></pre>
+
+
+
+            <h2 id="normalization">Normalization</h2>
+
+            <p>In the function <strong>“cbr_core_batch_normalization”</strong> all similarities per field from the calculation before are normalized to a value between 0 and 1, and inverted by a subtraction from 1. This is done because a higher similarity means that two cases are more similar to each other than two cases with a lower similarity. This calculation is done for each field. </p>
+
+
+
+            <p><script type="math/tex; mode=display" id="MathJax-Element-7">
+                    similarty\_per\_field\_normal_i=1-\frac{similarty\_per\_field_i}{similarty\_per\_field_{max}}
+                </script></p>
+
+            <p>The result is the similarity between two nodes for each field. Each field has an <strong>“attribute weight</strong>“, which can be set by the user in the <a href="#create-a-custom-content-type-with-cbr">field settings</a>. The similarity between two nodes is the <strong>weighted average</strong> of all normalized and inverted similarities per field.</p>
+
+
+
+            <p><script type="math/tex; mode=display" id="MathJax-Element-8">
+                    similarity = \frac{\sum_{i=0}^n(similarty\_per\_field\_normal_i*attribute\_weight_i)}{\sum_{i=0}^n attribute\_weight_i}
+                </script></p>
+
+
+
+            <h2 id="save-to-database">Save to database</h2>
+
+            <p>The similarity is saved in the database table <strong>“cbr_similarity_factor”</strong> and can be used by the <a href="#create-a-view-for-similar-cases">view module</a>. </p>
+
+
+
+            <h1 id="api-reference">API Reference</h1>
+
+
+
+            <h2 id="hooks">Hooks</h2>
+
+
+
+            <h3 id="hookcalculatecbrsimilarityperfield">hook_calculate_cbr_similarity_per_field</h3>
+
+            <p>This hook can be used to override the calculation of the similarity between two nodes. The hook is called on registered field types only. To register a field type, call the function <a href="#function-cbrcoreregisterfield">cbr_core_register_field</a>.</p>
+
+            <p><strong>Parameter and return value</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$node1</td>
+                        <td align="left">The first node</td>
+                    </tr>
+                    <tr>
+                        <td align="left">$node2</td>
+                        <td align="left">The second node</td>
+                    </tr>
+                    <tr>
+                        <td align="left">$field_name</td>
+                        <td align="left">The name of the field</td>
+                    </tr>
+                    <tr>
+                        <td align="left">$field_type</td>
+                        <td align="left">The type of the field</td>
+                    </tr>
+                    <tr>
+                        <td align="left">return value</td>
+                        <td align="left">The calculated similarity</td>
+                    </tr>
+                </tbody></table>
+
+
+            <p><strong>Example</strong></p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hook_calculate_cbr_similarity_per_field</span><span class="hljs-params">(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_type</span>)</span> {</span>
+    <span class="hljs-comment">//The default calculation is replaced by a square division calculation</span>
+    <span class="hljs-comment">//Get the field's language</span>
+    <span class="hljs-variable">$field_language1</span> = field_language(<span class="hljs-string">'node'</span>, <span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>);
+    <span class="hljs-variable">$field_language2</span> = field_language(<span class="hljs-string">'node'</span>, <span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>);
+
+    <span class="hljs-comment">//Choose the right field type</span>
+    <span class="hljs-keyword">if</span> (<span class="hljs-variable">$field_type</span> == <span class="hljs-string">'cbr_core_number'</span>) {
+        <span class="hljs-comment">//Use cbr_core_get_field_value from cbr_core_calculate.inc to get </span>
+        <span class="hljs-comment">//the value of a field</span>
+        <span class="hljs-variable">$node1_fieldvalue</span> = cbr_core_get_field_value(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language1</span>, <span class="hljs-string">'value'</span>);
+        <span class="hljs-variable">$node2_fieldvalue</span> = cbr_core_get_field_value(<span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language2</span>, <span class="hljs-string">'value'</span>);
+
+        <span class="hljs-comment">//Example calculation: Square Division</span>
+        <span class="hljs-keyword">return</span> abs(<span class="hljs-variable">$node1_fieldvalue</span> * <span class="hljs-variable">$node1_fieldvalue</span> - <span class="hljs-variable">$node2_fieldvalue</span> * <span class="hljs-variable">$node2_fieldvalue</span>);
+    }
+    <span class="hljs-comment">//Otherwise, return nothing or NULL</span>
+}
+</code></pre>
+
+            <h3 id="hookcbrcorecalculatesimilaritybatchalter">hook_cbr_core_calculate_similarity_batch_alter</h3>
+
+            <p>This hook allows you to alter the batch configuration for calculating and saving the similarities. It allows you to override the calculation process completely.  To save the similarity to the database you can use the function <strong>“cbr_core_save_similarty”</strong> from <strong>“cbr_core_calculate.inc”</strong>. More information about the drupal batch system at <a href="https://api.drupal.org/api/drupal/includes%21form.inc/group/batch/7.x">https://api.drupal.org/api/drupal/includes%21form.inc/group/batch/7.x</a>     </p>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$batch</td>
+                        <td align="left">The associative array of batch information<a href="#fn:hook_batch_alter" id="fnref:hook_batch_alter" title="See footnote" class="footnote">1</a></td>
+                    </tr>
+                    <tr>
+                        <td align="left">$content_type</td>
+                        <td align="left">The type of content</td>
+                    </tr>
+                    <tr>
+                        <td align="left">$redirect</td>
+                        <td align="left">Path to redirect to when the batch has finished processing<a href="#fn:batch_process" id="fnref:batch_process" title="See footnote" class="footnote">2</a></td>
+                    </tr>
+                </tbody></table>
+
+
+            <p><strong>Example</strong></p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hook_cbr_core_calculate_similarity_batch_alter</span><span class="hljs-params">(&amp;<span class="hljs-variable">$batch</span>, &amp;<span class="hljs-variable">$content_type</span>, &amp;<span class="hljs-variable">$redirect</span>)</span> {</span>
+    <span class="hljs-keyword">if</span> (<span class="hljs-variable">$content_type</span> == <span class="hljs-string">'my_content_type'</span>) {
+        <span class="hljs-variable">$batch</span> = <span class="hljs-keyword">array</span>(
+            <span class="hljs-string">'operations'</span> =&gt; <span class="hljs-keyword">array</span>(
+                <span class="hljs-keyword">array</span>(<span class="hljs-string">'my_calculation'</span>, <span class="hljs-keyword">array</span>(<span class="hljs-variable">$content_type</span>)),
+            ),
+            <span class="hljs-string">'finished'</span> =&gt; <span class="hljs-string">'my_content_type_batch_finished'</span>,
+            <span class="hljs-string">'title'</span> =&gt; t(<span class="hljs-string">'Processing CBR calculation'</span>),
+            <span class="hljs-string">'init_message'</span> =&gt; t(<span class="hljs-string">'CBR calculation is starting.'</span>),
+            <span class="hljs-string">'progress_message'</span> =&gt; t(<span class="hljs-string">'Processed @current out of @total.'</span>),
+            <span class="hljs-string">'error_message'</span> =&gt; t(<span class="hljs-string">'CBR core calculate has encountered an error.'</span>),
+            <span class="hljs-comment">//Important: Path to file, where my_calculation is implemented</span>
+            <span class="hljs-string">'file'</span> =&gt; drupal_get_path(<span class="hljs-string">'module'</span>, <span class="hljs-string">'my_module'</span>) . <span class="hljs-string">'/my_file.inc'</span>,
+        );
+        <span class="hljs-comment">//Redirect to front page </span>
+        <span class="hljs-variable">$redirect</span> = <span class="hljs-string">"/node"</span>;
+    }
+}</code></pre>
+
+
+
+            <h3 id="hookcbrcorebatchcalculationcontextalter">hook_cbr_core_batch_calculation_context_alter</h3>
+
+            <p>This hook alters the batch context during calculation. You may use it in a custom implemented field to add field information like content type and attribute weight to <code>$context['sandbox']['fieldinfo'][$field_name]['type']</code> and <code>$context['results']['fieldinfo'][$field_name]['weight']</code>.</p>
+
+            <blockquote>
+                <p>This hook is called multiply times during the batch process. For more information, visit the documentation for the batch api on <a href="https://www.drupal.org">drupal.org</a> or the example at <a href="https://www.drupal.org/node/180528">https://www.drupal.org/node/180528</a></p>
+            </blockquote>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$content</td>
+                        <td align="left">An array that will contain information about the status of the batch. The values in <span>$</span>context will retain their values as the batch progresses.<a href="#fn:node180528" id="fnref:node180528" title="See footnote" class="footnote">3</a></td>
+                    </tr>
+                    <tr>
+                        <td align="left">$content_type</td>
+                        <td align="left">The type of content</td>
+                    </tr>
+                </tbody></table>
+
+
+            <p><strong>Example</strong></p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hook_cbr_core_batch_calculation_context_alter</span><span class="hljs-params">(&amp;<span class="hljs-variable">$context</span>, &amp;<span class="hljs-variable">$content_type</span>)</span> {</span>
+    <span class="hljs-comment">//We change the attribute weight for the field type "my_type"</span>
+    <span class="hljs-comment">//Get all field names and types</span>
+    <span class="hljs-variable">$fields</span> = field_info_instances(<span class="hljs-string">'node'</span>, <span class="hljs-variable">$content_type</span>);
+    <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$fields</span> <span class="hljs-keyword">as</span> <span class="hljs-variable">$field_name</span> =&gt; <span class="hljs-variable">$value</span>) {
+        <span class="hljs-variable">$field_info</span> = field_info_field(<span class="hljs-variable">$field_name</span>);
+        <span class="hljs-variable">$field_type</span> = <span class="hljs-variable">$field_info</span>[<span class="hljs-string">'type'</span>];
+        <span class="hljs-comment">//Add the fieldinfo to $context if it is your type</span>
+        <span class="hljs-keyword">if</span> (<span class="hljs-variable">$field_type</span> == <span class="hljs-string">'my_type'</span>) {
+            <span class="hljs-variable">$context</span>[<span class="hljs-string">'sandbox'</span>][<span class="hljs-string">'fieldinfo'</span>][<span class="hljs-variable">$field_name</span>][<span class="hljs-string">'type'</span>] = <span class="hljs-variable">$field_type</span>;
+            <span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'fieldinfo'</span>][<span class="hljs-variable">$field_name</span>][<span class="hljs-string">'weight'</span>] = <span class="hljs-number">7</span>;
+        }
+    }
+}</code></pre>
+
+
+
+            <h3 id="hookcbrcorebatchnormalizationcontextalter">hook_cbr_core_batch_normalization_context_alter</h3>
+
+            <p>This hook alters <span>$</span>context before the normalization of the similarity. You can use it for overriding the normalization process.</p>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$content</td>
+                        <td align="left">An array that will contain information about the status of the batch. The values in <span>$</span>context will retain their values as the batch progresses.<a href="#fn:node180528" id="fnref:node180528" title="See footnote" class="footnote">4</a></td>
+                    </tr>
+                </tbody></table>
+
+
+            <p><strong>Example</strong></p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hook_cbr_core_batch_normalization_context_alter</span><span class="hljs-params">(&amp;<span class="hljs-variable">$context</span>)</span> {</span>
+    <span class="hljs-comment">//We override the normalization. </span>
+    <span class="hljs-comment">//Caution, therefore, a larger similarity means less consensus. (Inverted from normal behavior)</span>
+    <span class="hljs-comment">//You may have to update your view!</span>
+    <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'fields'</span>] <span class="hljs-keyword">as</span> <span class="hljs-variable">$field_name</span> =&gt; <span class="hljs-variable">$field_factors_per_nid_tuple</span>) {
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$field_factors_per_nid_tuple</span> <span class="hljs-keyword">as</span> <span class="hljs-variable">$nid_tuple</span> =&gt; <span class="hljs-variable">$field_factor</span>) {
+            <span class="hljs-variable">$data_per_nid_tuble</span>[<span class="hljs-variable">$nid_tuple</span>][<span class="hljs-variable">$field_name</span>] = <span class="hljs-variable">$field_factor</span>;
+        }
+    }
+
+    <span class="hljs-comment">//Skip the default implementation</span>
+    <span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'fields'</span>] = <span class="hljs-keyword">array</span>();
+
+    <span class="hljs-comment">//From cbr_core_calculate.inc:</span>
+    <span class="hljs-comment">//We sum up the similarity calculated by each field to one similarity </span>
+    <span class="hljs-comment">//Under consideration of the weight of the field</span>
+    <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$data_per_nid_tuble</span> <span class="hljs-keyword">as</span> <span class="hljs-variable">$nid_tuple</span> =&gt; <span class="hljs-variable">$field_array</span>) {
+        <span class="hljs-variable">$sum</span> = <span class="hljs-number">0</span>;
+        <span class="hljs-variable">$similarity</span> = <span class="hljs-number">0</span>;
+        <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$field_array</span> <span class="hljs-keyword">as</span> <span class="hljs-variable">$field_name</span> =&gt; <span class="hljs-variable">$current_similarity</span>) {
+            <span class="hljs-variable">$weight</span> = <span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'fieldinfo'</span>][<span class="hljs-variable">$field_name</span>][<span class="hljs-string">'weight'</span>];
+            <span class="hljs-variable">$sum</span> += <span class="hljs-variable">$weight</span>;
+            <span class="hljs-variable">$similarity</span> += (<span class="hljs-variable">$current_similarity</span> * <span class="hljs-variable">$weight</span>);
+        }
+        <span class="hljs-variable">$similarity</span> = <span class="hljs-variable">$sum</span> &gt; <span class="hljs-number">0</span> ? <span class="hljs-variable">$similarity</span> / <span class="hljs-variable">$sum</span> : <span class="hljs-number">0</span>;
+        <span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'similarity'</span>][<span class="hljs-variable">$nid_tuple</span>] = <span class="hljs-variable">$similarity</span>;
+    }
+}</code></pre>
+
+            <h3 id="hookcbrcorebatchsavecontextalter">hook_cbr_core_batch_save_context_alter</h3>
+
+            <p>This hook alters $context before saving the factors to the database. You may use it for additional calculations over all factors or for an alternative storage of the similarities. To turn off the default saving via cbr_core_calculate.inc, use  <code>$context['results']['factors'] = array();</code> </p>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$content</td>
+                        <td align="left">An array that will contain information about the status of the batch. The values in <span>$</span>context will retain their values as the batch progresses.<a href="#fn:node180528" id="fnref:node180528" title="See footnote" class="footnote">5</a></td>
+                    </tr>
+                </tbody></table>
+
+
+            <p><strong>Example</strong></p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">hook_cbr_core_batch_save_context_alter</span><span class="hljs-params">(&amp;<span class="hljs-variable">$context</span>)</span> {</span>
+    <span class="hljs-comment">//Round all similarities to 2 decimals</span>
+    <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'similarity'</span>] <span class="hljs-keyword">as</span> <span class="hljs-variable">$nid_tuple</span> =&gt; <span class="hljs-variable">$similarity</span>) {
+        <span class="hljs-variable">$context</span>[<span class="hljs-string">'results'</span>][<span class="hljs-string">'similarity'</span>][<span class="hljs-variable">$nid_tuple</span>] = round(<span class="hljs-variable">$similarity</span>, <span class="hljs-number">2</span>);
+    }
+}</code></pre>
+
+
+
+            <h2 id="public-functions">Public functions</h2>
+
+
+
+            <h3 id="function-cbrcoreregisterfield">function  cbr_core_register_field</h3>
+
+            <p>This function must be called to register a field type at the case based reasoning module.   Usually this is done at <strong>“hook_enable()”</strong> in the module’s <strong>.install</strong> file. </p>
+
+            <p>The hook <a href="#hookcalculatecbrsimilarityperfield">calculate_cbr_similarity_per_field</a> is called only on registered field types. All registered field types are listed at: <strong>“Administration”</strong> » <strong>“Configuration”</strong>  » <strong>“Case Based Reasoning”</strong> » <strong>“Registered CBR fields”</strong>.</p>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$field_type</td>
+                        <td align="left">The name of the field type that should be registered at the case based reasoning module.</td>
+                    </tr>
+                </tbody></table>
+
+
+            <blockquote>
+                <p>Example call of this function at <a href="#implementing-cbr-on-an-existing-field">Implementing CBR on an existing field</a></p>
+            </blockquote>
+
+
+
+            <h3 id="function-cbrcoreunregisterfield">function cbr_core_unregister_field</h3>
+
+            <p>This function must be called to unregister a field type at the case based reasoning module.   Usually this is done at <strong>“hook_disable()”</strong> in the module’s <strong>.install</strong> file. </p>
+
+            <p><strong>Parameter</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$field_type</td>
+                        <td align="left">The name of the field type that should be unregistered at the case based reasoning module.</td>
+                    </tr>
+                </tbody></table>
+
+
+            <blockquote>
+                <p>Example call of this function at <a href="#implementing-cbr-on-an-existing-field">Implementing CBR on an existing field</a></p>
+            </blockquote>
+
+
+
+            <h3 id="function-cbrcoreisenabledoncontenttype">function cbr_core_is_enabled_on_content_type</h3>
+
+            <p>Returns true, if a content type has at least one field with case based reasoning enabled.</p>
+
+            <p><strong>Parameter and return value</strong></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th align="left">Name</th>
+                        <th align="left">Description</th>
+                    </tr>
+                </thead>
+                <tbody><tr>
+                        <td align="left">$content_type</td>
+                        <td align="left">The content type</td>
+                    </tr>
+                    <tr>
+                        <td align="left">return value</td>
+                        <td align="left"><strong>True</strong>, if case based reasoning is active on this content type or <strong>False</strong>, if not</td>
+                    </tr>
+                </tbody></table>
+
+
+
+
+            <h1 id="implementing-cbr-on-an-existing-field">Implementing CBR on an existing field</h1>
+
+            <p>In this example, we extend the field type <strong>“datestamp”</strong> from the module <strong>“<a href="https://www.drupal.org/project/date">date</a>”</strong> with case based reasoning functionality.</p>
+
+            <p>First, we create three files like usual in a drupal 7 module:</p>
+
+            <ul>
+                <li>cbr_date_field.info</li>
+                <li>cbr_date_field.install</li>
+                <li>cbr_date_field.module</li>
+            </ul>
+
+            <p>Second, we open <strong>cbr_date_field.info</strong> and add the following content:</p>
+
+            <pre>name = CBR Datefield (Unix timestamp) 
+description = Provides case based reasoning for the date field (Unix timestamp)
+core = 7.x
+version = 1.0
+package = Case Based Reasoning
+dependencies[] = cbr_core
+dependencies[] = date
+            </pre>
+
+            <p>Third, we open <strong>cbr_date_field.install</strong> and implement the <strong>“enable”</strong> and <strong>“disable”</strong> hook. In that hooks, we call <a href="#function-cbrcoreregisterfield">cbr_core_register_field</a> and <a href="#function-cbrcoreunregisterfield">cbr_core_unregister_field</a>  with the name of the field type. The name can be found in the date module. </p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-comment">/** Implements hook_enable() */</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cbr_date_field_enable</span><span class="hljs-params">()</span> {</span>
+    cbr_core_register_field(<span class="hljs-string">'datestamp'</span>);
+}
+
+<span class="hljs-comment">/** Implements hook_disable() */</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cbr_date_field_disable</span><span class="hljs-params">()</span> {</span>
+    cbr_core_unregister_field(<span class="hljs-string">'datestamp'</span>);
+}
+</code></pre>
+
+            <p>Then, we open  <strong>cbr_date_field.module</strong> and implement the hook <a href="#hookcalculatecbrsimilarityperfield">calculate_cbr_factor_per_field</a>. In the hook, we tell the <strong>cbr_core</strong> module how to calculate the similarity for this field type. This hook is called from several modules. Therefore, we check first if <code>$field_type</code> is our field type  “datestamp”. Then, we load the language of the field with the function  <a href="https://api.drupal.org/api/drupal/modules%21field%21field.multilingual.inc/function/field_language/7.x">field_language</a>. Next, we load the value of the date field with the function <strong>cbr_core_get_field_value</strong>. This function is implemented at <strong>cbr_core_calculate.inc</strong> in the <strong>cbr_core</strong> module. </p>
+
+            <p>Date fields can have one or two values (begin and end date). The date value 1 is stored in the database column ‘value’, the optional date value 2 in the column ‘value2’. If an end date exists on both nodes, we compare also the end dates. To check if an end date exists, we use your the function cbr_date_field_check_if_value2_exists, which can be found in the code listing below. More about how a module stores its field information in the <strong>“.install”</strong> file of the module.</p>
+
+            <p>The last step is the calculation. If an end date exists, we return the sum of the absolute difference of both values. If not, we return the absolute difference of the begin dates of the compared nodes. The rest of the calculation, including the <a href="#normalization">normalization</a> is done by the <strong>cbr_core</strong> module. </p>
+
+            <p>Upload and enable your new module. Make sure that the field type is listed correct at <strong>“Administration”</strong> » <strong>“Configuration”</strong>  » <strong>“Case Based Reasoning”</strong> » <strong>“Registered CBR fields”</strong>. Add a new field of this field type to a content type. You can now <a href="#create-a-custom-content-type-with-cbr">enable  CBR</a> on this field type. </p>
+
+
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cbr_date_field_calculate_cbr_factor_per_field</span><span class="hljs-params">(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_type</span>)</span> {</span>
+  <span class="hljs-comment">//Choose the right field type</span>
+  <span class="hljs-keyword">if</span> (<span class="hljs-variable">$field_type</span> == <span class="hljs-string">'datestamp'</span>) {
+    <span class="hljs-comment">//Get the field's language</span>
+    <span class="hljs-variable">$field_language1</span> = field_language(<span class="hljs-string">'node'</span>, <span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>);
+    <span class="hljs-variable">$field_language2</span> = field_language(<span class="hljs-string">'node'</span>, <span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>);
+
+    <span class="hljs-comment">//Use cbr_core_get_field_value from cbr_core_calculate.inc to get the value of a field</span>
+    <span class="hljs-variable">$node1_fieldvalue</span> = cbr_core_get_field_value(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language1</span>, <span class="hljs-string">'value'</span>);
+    <span class="hljs-variable">$node2_fieldvalue</span> = cbr_core_get_field_value(<span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language2</span>, <span class="hljs-string">'value'</span>);
+
+    <span class="hljs-comment">//Check if end date exists</span>
+    <span class="hljs-keyword">if</span> (cbr_date_field_check_if_value2_exists(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language1</span>)
+    &amp;&amp; cbr_date_field_check_if_value2_exists(<span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language2</span>)){
+      <span class="hljs-variable">$node1_fieldvalue2</span> = cbr_core_get_field_value(<span class="hljs-variable">$node1</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language1</span>, <span class="hljs-string">'value2'</span>);
+      <span class="hljs-variable">$node2_fieldvalue2</span> = cbr_core_get_field_value(<span class="hljs-variable">$node2</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language2</span>, <span class="hljs-string">'value2'</span>);
+      <span class="hljs-comment">//Begin and end timestamp: Sum of the difference between each two timestamps</span>
+      <span class="hljs-keyword">return</span> abs(<span class="hljs-variable">$node1_fieldvalue</span> - <span class="hljs-variable">$node2_fieldvalue</span>) + (<span class="hljs-variable">$node1_fieldvalue2</span> - <span class="hljs-variable">$node2_fieldvalue2</span>);
+    }
+
+    <span class="hljs-comment">//One timestamp: Abs-Diff between the two timestamps</span>
+    <span class="hljs-keyword">return</span> abs(<span class="hljs-variable">$node1_fieldvalue</span> - <span class="hljs-variable">$node2_fieldvalue</span>);
+  }
+}</code></pre>
+
+            <pre class="prettyprint"><code class="language-php hljs "><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">cbr_date_field_check_if_value2_exists</span><span class="hljs-params">(<span class="hljs-variable">$node</span>, <span class="hljs-variable">$field_name</span>, <span class="hljs-variable">$field_language</span>)</span> {</span>
+  <span class="hljs-comment">//Transform object into array</span>
+  <span class="hljs-variable">$node_values</span> = get_object_vars(<span class="hljs-variable">$node</span>);
+
+  <span class="hljs-keyword">if</span> (array_key_exists(<span class="hljs-variable">$field_language</span>, <span class="hljs-variable">$node_values</span>[<span class="hljs-variable">$field_name</span>]) 
+  &amp;&amp; array_key_exists(<span class="hljs-number">0</span>, <span class="hljs-variable">$node_values</span>[<span class="hljs-variable">$field_name</span>][<span class="hljs-variable">$field_language</span>])) {
+    <span class="hljs-keyword">return</span> array_key_exists(<span class="hljs-variable">$node_values</span>[<span class="hljs-variable">$field_name</span>][<span class="hljs-variable">$field_language</span>][<span class="hljs-number">0</span>], <span class="hljs-string">'value2'</span>);
+  }
+  <span class="hljs-keyword">return</span> <span class="hljs-keyword">false</span>;
+}</code></pre>
+
+            <div class="footnotes"><hr><ol>
+                    <li id="fn:hook_batch_alter"><a href="https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_batch_alter/7.x">https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_batch_alter/7.x</a> <a href="#fnref:hook_batch_alter" title="Return to article" class="reversefootnote">↩</a></li>
+                    <li id="fn:batch_process"><a href="https://api.drupal.org/api/drupal/includes!form.inc/function/batch_process/7.x">https://api.drupal.org/api/drupal/includes!form.inc/function/batch_process/7.x</a> <a href="#fnref:batch_process" title="Return to article" class="reversefootnote">↩</a></li>
+                    <li id="fn:node180528"><a href="https://www.drupal.org/node/180528">https://www.drupal.org/node/180528</a> <a href="#fnref:node180528" title="Return to article" class="reversefootnote">↩</a>
+                        <a href="#fnref:node180528" title="Return to article" class="reversefootnote">↩</a>
+                        <a href="#fnref:node180528" title="Return to article" class="reversefootnote">↩</a></li>
+                </ol></div></div></body>
+</html>

@@ -1,0 +1,31 @@
+<?php
+
+/**
+ * This hook calculates the CBR factor between two nodes.  
+ * 
+ * @param type $node1
+ * @param type $node2
+ * @param type $field_name
+ * @param type $fieldinfo
+ * @return type
+ */
+function cbr_text_field_calculate_cbr_factor_per_field($node1, $node2, $field_name, $fieldinfo) {
+
+    //Get the field's language
+    $field_language1 = field_language('node', $node1, $field_name);
+    $field_language2 = field_language('node', $node2, $field_name);
+
+    //Choose the right field type
+    if (in_array($fieldinfo['type'], array('text', 'text_long', 'text_with_summary'))) {
+        //Use cbr_core_get_field_value from cbr_core_calculate.inc to get the value from a field
+        $node1_fieldvalue = cbr_core_get_field_value($node1, $field_name, $field_language1, 'value');
+        $node2_fieldvalue = cbr_core_get_field_value($node2, $field_name, $field_language2, 'value');
+        
+        //if both texts are equal return 0, otherwise return 1
+        //this will be inverted at the normalization step!!!
+        return strtolower(trim($node1_fieldvalue)) == strtolower(trim($node2_fieldvalue)) ? 0 : 1; 
+    }
+
+    //Important! To use the default implementation for all other field types, return NULL
+    return NULL;
+}
